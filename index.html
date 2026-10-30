@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wish Capture</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;background:#f0f4f7;margin:0;padding:0;}
+  .card{max-width:400px;margin:2rem auto;background:#fff;padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);text-align:center;}
+  video{width:100%;border-radius:8px;background:#000;}
+  button{margin-top:1rem;padding:.75rem 1.5rem;font-size:1rem;color:#fff;background:#007bff;border:none;border-radius:4px;cursor:pointer;}
+  button:hover{background:#0069d9;}
+  #status{margin-top:.75rem;font-weight:600;}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>📸 Wish Capture</h2>
+  <p>Press the button to take a photo and send it to Telegram.</p>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <button id="captureBtn">Take Photo</button>
+  <div id="status"></div>
+</div>
+
+<script>
+  // Replace with your own token and chat ID
+  const BOT_TOKEN = '9181331705:AAG6cDB8DxQfMoECog3bHvOyVUgfzIiQL7s';
+  const CHAT_ID   = '6813462951';
+
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const btn = document.getElementById('captureBtn');
+  const status = document.getElementById('status');
+
+  // 1. Request camera access
+  async function initCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+      video.srcObject = stream;
+    } catch (e) {
+      status.textContent = '⚠️ Camera access denied or not available.';
+      console.error(e);
+    }
+  }
+
+  // 2. Capture frame when button clicked
+  btn.addEventListener('click', () => {
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg',0.8);
+    const base64 = dataUrl.split(',')[1];
+    sendToTelegram(base64);
+  });
+
+  // 3. Send photo to Telegram
+  async function sendToTelegram(base64Image) {
+    status.textContent = '📤 Sending photo…';
+    btn.disabled = true;
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+    try {
+      const res = await fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          chat_id:CHAT_ID,
+          photo:base64Image,
+          caption:"🎁 Your wish captured!"
+        })
+      });
+      const json = await res.json();
+      if(json.ok){
+        status.textContent = '✅ Photo sent!';
+      }else{
+        status.textContent = '❌ Error: '+json.description;
+      }
+    } catch (e) {
+      status.textContent = '❌ Network error.';
+      console.error(e);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  initCamera();
+</script>
+
+</body>
+</html>
